@@ -2,80 +2,41 @@ package utility
 
 import (
 	"bufio"
-	"encoding/json"
-	"io"
-	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
-func GetLinesFromFile(file string) ([]string, error) {
+func GetAllFiles(root, extension string) (files []string, err error) {
+	extension = "." + strings.Trim(extension, ".")
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if filepath.Ext(path) == extension {
+			files = append(files, path)
+		}
+		return err
+	})
+	return
+}
+
+func GetLines(file string) ([]string, error) {
 	reader, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
+	var r []string
 	scanner := bufio.NewScanner(reader)
-	var lines []string
 	for scanner.Scan() {
-		text := scanner.Text()
-		if text != "" {
-			lines = append(lines, text)
-		}
+		r = append(r, scanner.Text())
 	}
-	return lines, nil
+	return r, nil
 }
 
-func GetFilesFromDir(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	files := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		files = append(files, path.Join(dir, entry.Name()))
-	}
-	return files, nil
-}
-
-func SaveJsonObj(obj interface{}, toFile string) error {
-	data, err := json.MarshalIndent(obj, "", "\t")
-	if err != nil {
-		return err
-	}
-	return writeFile(data, toFile)
-}
-
-func SaveFromReader(reader io.Reader, toFile string) error {
-	data, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	return writeFile(data, toFile)
-}
-
-func writeFile(data []byte, toFile string) error {
-	_, err := os.Stat(path.Dir(toFile))
-	if err != nil {
-		err = os.MkdirAll(path.Dir(toFile), os.ModePerm)
-		if err != nil {
-			return err
+func Contains(origin string, sub ...string) bool {
+	for _, s := range sub {
+		if strings.Contains(origin, s) {
+			return true
 		}
 	}
 
-	return os.WriteFile(toFile, data, os.ModePerm)
-}
-
-func Exists(file string) bool {
-	_, err := os.Stat(file)
-	return err == nil
-}
-
-func FormatFileName(file string) string {
-	file = strings.ReplaceAll(file, "/", "_")
-	file = strings.ReplaceAll(file, "\\", "_")
-	return file
+	return false
 }
